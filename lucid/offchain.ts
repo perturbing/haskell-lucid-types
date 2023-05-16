@@ -2,6 +2,11 @@ import * as L from "https://deno.land/x/lucid@0.10.1/mod.ts";
 import * as mod from "https://deno.land/std@0.182.0/crypto/mod.ts";
 import {decode} from "https://deno.land/std/encoding/hex.ts";
 
+const lucid = await L.Lucid.new(
+  undefined,
+  "Preview"
+);
+
 // cardano uses blake2b hash function for plutus data
 async function blake2bHash(input:string): Promise<string> {
   const digest = await mod.crypto.subtle.digest(
@@ -10,6 +15,14 @@ async function blake2bHash(input:string): Promise<string> {
   );
   const string = mod.toHashString(digest)
   return string
+}
+
+async function readScript(name: string): Promise<L.MintingPolicy> {
+  const validator = JSON.parse(await Deno.readTextFile("Plutus/assets/"+ name))
+  return {
+    type: "PlutusV2",
+    script: validator.cborHex
+  }
 }
 
 // ----- Haskell type
@@ -212,3 +225,81 @@ console.log("untyped cbor: "+ untypedCBOR4);
 console.log("client blake2b hash: 6942ba2fc66844f6ec0c7308fa3bcb89a06910077287d9f948e92a1cf93a9665")
 const blake2bDigest4 = await blake2bHash(example4PlutusData);
 console.log("lucid blake2b hash: "+blake2bDigest4);
+
+// ----- Haskell type
+//
+// alwaysFailAddress :: Address
+// alwaysFailAddress = Address {addressCredential = alwaysFailCredential, addressStakingCredential = Nothing}
+//
+// should be the following alwaysFailAddress.json file
+//
+// > printDataToJSON alwaysFailAddress 
+// {
+//     "constructor": 0,
+//     "fields": [
+//         {
+//             "constructor": 1,
+//             "fields": [
+//                 {
+//                     "bytes": "f130435a61f56c2f2f6304239f6d556df7291dd8628ce37a922fbc15"
+//                 }
+//             ]
+//         },
+//         {
+//             "constructor": 1,
+//             "fields": []
+//         }
+//     ]
+// }
+//
+// This json file can be converted to plutus data and hashed via the command
+// 
+// cardano-cli transaction hash-script-data --script-data-file Test4.json
+//
+// Typed version in lucid
+console.log("Test always fail address");
+const PubKeyHash = L.Data.Bytes({ minLength: 28, maxLength: 28 });
+type PubKeyHash = L.Data.Static<typeof PubKeyHash>;
+
+const ValidatorHash = L.Data.Bytes({ minLength: 28, maxLength: 28 });
+type ValidatorHash = L.Data.Static<typeof ValidatorHash>;
+
+const Credential = L.Data.Enum([
+    L.Data.Object({ PubKeyCredential: L.Data.Tuple([PubKeyHash]) }),
+    L.Data.Object({ ScriptCredential: L.Data.Tuple([ValidatorHash]) })
+]);
+type Credential = L.Data.Static<typeof Credential>;
+
+//In an address, a chain pointer refers to a point of the chain containing a stake key registration certificate. A point is identified by 3 coordinates:
+// An absolute slot number
+// A transaction index (within that slot)
+// A (delegation) certificate index (within that transaction)
+const StakingPtr = L.Data.Object({
+    slotNumber: L.Data.Integer(),
+    transactionIndex: L.Data.Integer(),
+    certificateIndex: L.Data.Integer()
+});
+type StakingPtr = L.Data.Static<typeof StakingPtr>;
+
+const StakingCredential = L.Data.Enum([
+    L.Data.Object({ StakingHash: L.Data.Tuple([Credential]) }),
+    L.Data.Object({ StakingPtr: L.Data.Tuple([StakingPtr]) })
+]);
+type StakingCredential = L.Data.Static<typeof StakingCredential>;
+
+const Address = L.Data.Object({
+    addressCredential: Credential,
+    addressStakingCredential: L.Data.Nullable(StakingCredential)
+});
+type Address = L.Data.Static<typeof Address>;
+
+// import always fail script
+const validatorAlwaysFail: L.SpendingValidator = await readScript("AlwaysFail.plutus");
+const addressAlwaysFail: L.Address = lucid.utils.validatorToAddress(validatorAlwaysFail);
+const details: L.AddressDetails = L.getAddressDetails(addressAlwaysFail);
+const addrAlwaysFail: Address = {addressCredential: { ScriptCredential: [details.paymentCredential.hash] }, addressStakingCredential: null};
+const addressPlutusData: string = L.Data.to<Address>(addrAlwaysFail,Address);
+console.log("typed cbor: "+ addressPlutusData);
+console.log("client blake2b hash: c05e0b92f78a14e5922d68befbea9af882f7db758b0cf949d0543de69da7eea4")
+const blake2bDigestAddr = await blake2bHash(addressPlutusData);
+console.log("lucid blake2b hash: "+blake2bDigestAddr);

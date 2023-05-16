@@ -9,10 +9,11 @@ module MintingPolicy where
 
 import           Plutus.V2.Ledger.Api (BuiltinData, POSIXTime, PubKeyHash,
                                        ScriptContext, Validator,
-                                       mkValidatorScript)
+                                       mkValidatorScript, ValidatorHash,
+                                       Credential (..), Address (..))
 import           PlutusTx             (compile, makeIsDataIndexed, CompiledCode, unsafeFromBuiltinData)
-import           PlutusTx.Prelude     (lengthOfByteString,Bool (..),BuiltinByteString,(==),($),Integer)
-import           Utilities            (wrapPolicy, writeCodeToFile,printDataToJSON)
+import           PlutusTx.Prelude     (lengthOfByteString,Bool (..),BuiltinByteString,(==),($),Integer, Maybe (..))
+import           Utilities            (validatorHash', wrapValidator, writeValidatorToFile, printDataToJSON)
 import           Prelude              (IO)
 
 ---------------------------------------------------------------------------------------------------
@@ -31,17 +32,25 @@ makeIsDataIndexed ''Test3 [('Constructor1Test3,0),('Constructor2Test3,1)]
 
 type Test4 = (BuiltinByteString, Test1)
 
-{-# INLINABLE mkPolicy #-}
-mkPolicy :: BuiltinByteString -> ScriptContext -> Bool
-mkPolicy _red _ctx = True
+{-# INLINABLE  mkAlwaysFail #-}
+mkAlwaysFail :: () -> () -> ScriptContext -> Bool
+mkAlwaysFail _dat _red _ctx = False
 
-{-# INLINABLE  mkWrappedPolicy #-}
-mkWrappedPolicy :: BuiltinData -> BuiltinData -> ()
-mkWrappedPolicy = wrapPolicy $ mkPolicy
+{-# INLINABLE  mkWrappedAlwaysFail #-}
+mkWrappedAlwaysFail :: BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkWrappedAlwaysFail = wrapValidator $ mkAlwaysFail
 
-policyCode :: CompiledCode (BuiltinData -> BuiltinData -> () )
-policyCode = $$(compile [|| mkWrappedPolicy ||])
+alwaysFail :: Validator
+alwaysFail = mkValidatorScript $$(compile [|| mkWrappedAlwaysFail ||])
 
-saveVal :: IO ()
-saveVal = writeCodeToFile "./assets/policy.plutus" policyCode
+saveAlwaysFail :: IO ()
+saveAlwaysFail = writeValidatorToFile "assets/AlwaysFail.plutus" alwaysFail
 
+alwaysFailValHash :: ValidatorHash
+alwaysFailValHash = validatorHash' alwaysFail
+
+alwaysFailCredential :: Credential 
+alwaysFailCredential = ScriptCredential alwaysFailValHash
+
+alwaysFailAddress :: Address
+alwaysFailAddress = Address {addressCredential = alwaysFailCredential, addressStakingCredential = Nothing}
