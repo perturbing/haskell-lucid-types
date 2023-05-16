@@ -34,7 +34,7 @@ const Test0 = L.Data.Bytes()
 type Test0 = L.Data.Static<typeof Test0>
 const example0: Test0 = L.fromText("Hello World")
 const example0PlutusData: string = L.Data.to<Test0>(example0,Test0)
-console.log("typed cbor: "+ L.Data.to<Test0>(example0,Test0))
+console.log("typed cbor: "+ example0PlutusData)
 // untyped version
 const untypedCBOR0: string = L.Data.to(L.fromText("Hello World"))
 console.log("untyped cbor: "+ untypedCBOR0)
@@ -72,7 +72,7 @@ const Test1 = L.Data.Object({
 type Test1 = L.Data.Static<typeof Test1>
 const example1: Test1 = {constructor: L.fromText("Hello World")}
 const example1PlutusData: string = L.Data.to<Test1>(example1,Test1)
-console.log("typed cbor: "+ L.Data.to<Test1>(example1,Test1))
+console.log("typed cbor: "+ example1PlutusData)
 // untyped version
 const untypedCBOR1: string = L.Data.to(new L.Constr(0,[L.fromText("Hello World")]))
 console.log("untyped cbor: "+ untypedCBOR1)
@@ -116,7 +116,7 @@ const Test2 = L.Data.Object(
 type Test2 = L.Data.Static<typeof Test2>
 const example2: Test2 = {object1: 10n, object2: 11n}
 const example2PlutusData: string = L.Data.to<Test2>(example2,Test2);
-console.log("typed cbor: "+ L.Data.to<Test2>(example2,Test2));
+console.log("typed cbor: "+ example2PlutusData);
 // untyped version
 const untypedCBOR2: string = L.Data.to(new L.Constr(0,[10n,11n]));
 console.log("untyped cbor: "+ untypedCBOR2);
@@ -158,7 +158,7 @@ const Test3 = L.Data.Enum([
 type Test3 = L.Data.Static<typeof Test3>
 const example3: Test3 = {Constructor2Test3: [11n]}
 const example3PlutusData: string = L.Data.to<Test3>(example3,Test3);
-console.log("typed cbor: "+ L.Data.to<Test3>(example3,Test3));
+console.log("typed cbor: "+ example3PlutusData);
 // untyped version
 const untypedCBOR3: string = L.Data.to(new L.Constr(1,[11n]));
 console.log("untyped cbor: "+ untypedCBOR3);
@@ -205,7 +205,7 @@ const Test4 = L.Data.Object({
 type Test4 = L.Data.Static<typeof Test4>
 const example4: Test4 = {fistElem: L.fromText("Hello World"), secondElem: example1}
 const example4PlutusData: string = L.Data.to<Test4>(example4,Test4);
-console.log("typed cbor: "+ L.Data.to<Test4>(example4,Test4));
+console.log("typed cbor: "+ example4PlutusData);
 // untyped version
 const untypedCBOR4: string = L.Data.to(new L.Constr(0,[L.fromText("Hello World"), new L.Constr(0,[L.fromText('Hello World')])]));
 console.log("untyped cbor: "+ untypedCBOR4);
